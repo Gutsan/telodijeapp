@@ -181,6 +181,9 @@ CREATE POLICY "Users can view own profile" ON users
 CREATE POLICY "Users can update own profile" ON users
   FOR UPDATE USING (auth.uid() = id);
 
+CREATE POLICY "Authenticated users can create own profile" ON users
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
 -- Matches policies (public read)
 CREATE POLICY "Anyone can view matches" ON matches
   FOR SELECT USING (true);
@@ -226,13 +229,7 @@ CREATE POLICY "Creators can delete their quinielas" ON quinielas
 
 -- Quiniela players policies
 CREATE POLICY "Users can view quiniela members" ON quiniela_players
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM quiniela_players qp
-      WHERE qp.quiniela_id = quiniela_players.quiniela_id
-      AND qp.user_id = auth.uid()
-    )
-  );
+  FOR SELECT USING (true);
 
 CREATE POLICY "Users can join quinielas" ON quiniela_players
   FOR INSERT WITH CHECK (auth.uid() = user_id);
