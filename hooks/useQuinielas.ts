@@ -28,7 +28,12 @@ export function useQuinielas() {
         .select('quiniela_id')
         .eq('user_id', userId);
 
-      if (playerError) throw playerError;
+      if (playerError) {
+        console.error('Error fetching quiniela_players:', playerError.message);
+        // Don't throw — user may have no quinielas yet or RLS may block
+        setQuinielas([]);
+        return;
+      }
 
       const quinielaIds = playerQuinielas?.map(p => p.quiniela_id) || [];
       
@@ -71,7 +76,21 @@ export function useQuinielas() {
   async function createQuiniela(quiniela: Omit<Quiniela, 'id' | 'created_at' | 'updated_at'>): Promise<CreateQuinielaResult> {
     try {
       setError(null);
-      
+
+      // Ensure user profile exists in DB (foreign key requirement)
+      const { error: upsertError } = await supabase
+        .from('users')
+        .upsert({
+          id: quiniela.created_by,
+          email: quiniela.created_by + '@placeholder.com', // Will be overwritten by trigger
+          plan_type: 'free',
+        }, { onConflict: 'id' });
+
+      if (upsertError) {
+        console.warn('Profile upsert warning:', upsertError.message);
+        // Continue anyway — trigger may have already created the profile
+      }
+
       // Generate invite code if not provided
       const inviteCode = quiniela.invite_code || 
         Math.random().toString(36).substring(2, 8).toUpperCase();

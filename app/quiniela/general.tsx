@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
 import { usePredictions } from '../../hooks/usePredictions';
 import { Card, Button, Badge, Loading, EmptyState, Input } from '../../components/ui';
+import { PrelistaSection } from '../../components/quiniela/PrelistaSection';
 import { matchService } from '../../services/match.service';
 import { predictionService } from '../../services/prediction.service';
 
@@ -35,6 +36,8 @@ export default function QuinielaGeneralScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackType, setFeedbackType] = useState<'success' | 'error' | ''>('');
 
   useEffect(() => {
     loadMatches();
@@ -42,6 +45,15 @@ export default function QuinielaGeneralScreen() {
 
   const loadMatches = async () => {
     setLoading(true);
+    
+    // Auto-sync: verificar si necesitamos sincronizar partidos
+    // Si el sync falla (ej: API bloqueada), continuamos con datos existentes
+    try {
+      await matchService.checkAndSyncIfNeeded();
+    } catch (syncError) {
+      console.warn('Auto-sync failed, using existing data:', syncError);
+    }
+    
     const weeklyMatches = await matchService.getWeekly();
     
     // Merge predictions with matches
@@ -98,9 +110,13 @@ export default function QuinielaGeneralScreen() {
           );
         }
       }
-      Alert.alert('Éxito', 'Pronósticos guardados correctamente');
+      setFeedbackMessage('Pronósticos guardados correctamente');
+      setFeedbackType('success');
+      setTimeout(() => { setFeedbackMessage(''); setFeedbackType(''); }, 3000);
     } catch (error) {
-      Alert.alert('Error', 'No se pudieron guardar los pronósticos');
+      setFeedbackMessage('No se pudieron guardar los pronósticos');
+      setFeedbackType('error');
+      setTimeout(() => { setFeedbackMessage(''); setFeedbackType(''); }, 3000);
     } finally {
       setSaving(false);
     }
@@ -122,6 +138,15 @@ export default function QuinielaGeneralScreen() {
       }
     >
       <View className="p-4">
+        {/* Feedback */}
+        {feedbackMessage ? (
+          <View className={`rounded-lg p-3 mb-4 ${feedbackType === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+            <Text className={`text-sm text-center ${feedbackType === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+              {feedbackMessage}
+            </Text>
+          </View>
+        ) : null}
+
         {/* Header */}
         <Card className="mb-4">
           <View className="flex-row items-center justify-between">
@@ -136,6 +161,30 @@ export default function QuinielaGeneralScreen() {
             <Badge label="10 partidos" variant="primary" />
           </View>
         </Card>
+
+        {/* Pre-lista: Partidos destacados de la semana */}
+        <PrelistaSection
+          title="🎯 Partidos Destacados"
+          subtitle="Los más relevantes para predecir"
+          onMatchPress={(matchId) => {
+            // Auto-seleccionar partido para la quiniela
+            Alert.alert(
+              'Agregar partido',
+              '¿Deseas agregar este partido a tu pronóstico?',
+              [
+                { text: 'Cancelar', style: 'cancel' },
+                { text: 'Agregar', onPress: () => console.log('Add match:', matchId) },
+              ]
+            );
+          }}
+        />
+
+        {/* Divider */}
+        <View className="flex-row items-center my-4">
+          <View className="flex-1 h-px bg-gray-200" />
+          <Text className="px-3 text-sm text-gray-500">Todos los partidos</Text>
+          <View className="flex-1 h-px bg-gray-200" />
+        </View>
 
         {/* Matches List */}
         {matches.length > 0 ? (
