@@ -1,253 +1,191 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
-import { router } from 'expo-router';
-import { Card, Button, Badge, Input, Loading, EmptyState, Modal } from '../../components/ui';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import { Card, Button, Badge, Loading, EmptyState } from '../../components/ui';
+import { syncService } from '../../services/sync.service';
 import { matchService } from '../../services/match.service';
-import type { Match } from '../../types';
 
 export default function AdminMatchesScreen() {
-  const [matches, setMatches] = useState<Match[]>([]);
+  const [matches, setMatches] = useState<any[]>([]);
+  const [tournaments, setTournaments] = useState<any[]>([]);
+  const [syncLogs, setSyncLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingMatch, setEditingMatch] = useState<Match | null>(null);
-  
-  // Form state
-  const [homeTeam, setHomeTeam] = useState('');
-  const [awayTeam, setAwayTeam] = useState('');
-  const [league, setLeague] = useState('');
-  const [matchDate, setMatchDate] = useState('');
-  const [homeScore, setHomeScore] = useState('');
-  const [awayScore, setAwayScore] = useState('');
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState('');
+  const [activeTab, setActiveTab] = useState<'matches' | 'tournaments' | 'logs'>('matches');
 
-  useEffect(() => {
-    loadMatches();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
-  const loadMatches = async () => {
+  const loadData = async () => {
     setLoading(true);
-    const data = await matchService.getUpcoming(50);
-    setMatches(data);
+    const [matchesData, tournamentsData, logsData] = await Promise.all([
+      matchService.getUpcoming(50),
+      syncService.getActiveTournaments(),
+      syncService.getSyncLogs(10),
+    ]);
+    setMatches(matchesData);
+    setTournaments(tournamentsData);
+    setSyncLogs(logsData);
     setLoading(false);
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadMatches();
+    await loadData();
     setRefreshing(false);
   };
 
-  const handleCreateMatch = async () => {
-    if (!homeTeam || !awayTeam || !matchDate) {
-      Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
-      return;
+  const handleSync = async () => {
+    setSyncing(true);
+    setSyncResult('');
+    try {
+      const result = await syncService.syncMatches();
+      setSyncResult(`✅ ${result.created} creados, ${result.updated} actualizados, ${result.errors} errores`);
+      await loadData();
+    } catch (error) {
+      setSyncResult('❌ Error durante la sincronización');
+    } finally {
+      setSyncing(false);
     }
-
-    // TODO: Implement match creation via Edge Function
-    Alert.alert('Info', 'Funcionalidad en desarrollo');
-    setShowCreateModal(false);
-    resetForm();
   };
 
-  const handleUpdateScore = async (matchId: string) => {
-    if (!homeScore || !awayScore) {
-      Alert.alert('Error', 'Ingresa los goles de ambos equipos');
-      return;
-    }
-
-    // TODO: Implement score update via Edge Function
-    Alert.alert('Info', 'Funcionalidad en desarrollo');
-    resetForm();
-  };
-
-  const resetForm = () => {
-    setHomeTeam('');
-    setAwayTeam('');
-    setLeague('');
-    setMatchDate('');
-    setHomeScore('');
-    setAwayScore('');
-    setEditingMatch(null);
-  };
-
-  const openEditModal = (match: Match) => {
-    setEditingMatch(match);
-    setHomeTeam(match.home_team);
-    setAwayTeam(match.away_team);
-    setLeague(match.league || '');
-    setHomeScore(match.home_score?.toString() || '');
-    setAwayScore(match.away_score?.toString() || '');
-    setShowCreateModal(true);
+  const handleToggleTournament = async (id: number, currentActive: boolean) => {
+    await syncService.toggleTournament(id, !currentActive);
+    await loadData();
   };
 
   if (loading && !refreshing) {
-    return <Loading fullScreen text="Cargando partidos..." />;
+    return <Loading fullScreen text="Cargando panel admin..." />;
   }
 
   return (
-    <ScrollView 
+    <ScrollView
       className="flex-1 bg-gray-50"
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       <View className="p-4">
         {/* Header */}
         <Card className="mb-4">
           <View className="flex-row items-center justify-between">
             <View>
-              <Text className="text-xl font-bold text-gray-900">
-                Gestionar Partidos
-              </Text>
-              <Text className="text-gray-500">
-                {matches.length} partidos registrados
-              </Text>
+              <Text className="text-xl font-bold text-gray-900">Gestión de Partidos</Text>
+              <Text className="text-gray-500">{matches.length} partidos programados</Text>
             </View>
-            <Button
-              title="Crear"
-              onPress={() => setShowCreateModal(true)}
-              size="sm"
-            />
+            <Badge label="Admin" variant="primary" />
           </View>
         </Card>
 
-        {/* Matches List */}
-        {matches.length > 0 ? (
-          matches.map((match) => (
-            <Card key={match.id} className="mb-3">
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-xs text-gray-500">
-                  {match.league || 'Sin liga'}
-                </Text>
-                <Badge
-                  label={match.status === 'finished' ? 'Finalizado' : match.status === 'live' ? 'En Vivo' : 'Programado'}
-                  variant={match.status === 'finished' ? 'default' : match.status === 'live' ? 'error' : 'success'}
-                  size="sm"
-                />
-              </View>
-              
-              <View className="flex-row items-center justify-between">
-                <Text className="font-semibold text-gray-900 flex-1">
-                  {match.home_team}
-                </Text>
-                {match.status === 'finished' ? (
-                  <Text className="text-lg font-bold text-primary-600 mx-4">
-                    {match.home_score} - {match.away_score}
-                  </Text>
-                ) : (
-                  <Text className="text-gray-400 mx-4">VS</Text>
-                )}
-                <Text className="font-semibold text-gray-900 flex-1 text-right">
-                  {match.away_team}
-                </Text>
-              </View>
+        {/* Sync Button */}
+        <Card className="mb-4">
+          <Text className="font-semibold text-gray-900 mb-2">🔄 Sincronizar con SofaScore</Text>
+          <Text className="text-sm text-gray-500 mb-3">
+            Descarga partidos de los torneos activos para los próximos 7 días.
+          </Text>
+          <Button title={syncing ? 'Sincronizando...' : '⚡ Sincronizar Ahora'} onPress={handleSync} loading={syncing} fullWidth />
+          {syncResult ? (
+            <View className="mt-3 bg-gray-50 p-3 rounded-lg">
+              <Text className="text-sm text-gray-700">{syncResult}</Text>
+            </View>
+          ) : null}
+        </Card>
 
-              <Text className="text-xs text-gray-500 text-center mt-2">
-                {new Date(match.match_date).toLocaleDateString('es-ES', {
-                  weekday: 'short',
-                  day: 'numeric',
-                  month: 'short',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+        {/* Tabs */}
+        <View className="flex-row mb-4 bg-gray-100 rounded-lg p-1">
+          {(['matches', 'tournaments', 'logs'] as const).map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              className={`flex-1 py-2 rounded-md ${activeTab === tab ? 'bg-white shadow-sm' : ''}`}
+              onPress={() => setActiveTab(tab)}
+            >
+              <Text className={`text-center font-medium text-sm ${activeTab === tab ? 'text-primary-600' : 'text-gray-500'}`}>
+                {tab === 'matches' ? 'Partidos' : tab === 'tournaments' ? 'Torneos' : 'Logs'}
               </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-              <View className="flex-row justify-between mt-3 pt-3 border-t border-gray-100">
-                <Button
-                  title="Editar"
-                  onPress={() => openEditModal(match)}
-                  variant="outline"
-                  size="sm"
-                />
-                {match.status === 'scheduled' && (
-                  <Button
-                    title="Actualizar Marcador"
-                    onPress={() => {
-                      setEditingMatch(match);
-                      setHomeScore(match.home_score?.toString() || '');
-                      setAwayScore(match.away_score?.toString() || '');
-                    }}
-                    variant="primary"
+        {/* TAB: Matches */}
+        {activeTab === 'matches' && (
+          matches.length > 0 ? (
+            matches.map((match) => (
+              <Card key={match.id} className="mb-2">
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1">
+                    <Text className="text-xs text-gray-500">{match.league || 'Sin liga'}</Text>
+                    <Text className="font-medium text-gray-900 text-sm">{match.home_team} vs {match.away_team}</Text>
+                    <Text className="text-xs text-gray-400">
+                      {new Date(match.match_date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                  </View>
+                  {match.status === 'scheduled' ? (
+                    <Badge label="Programado" variant="success" size="sm" />
+                  ) : match.status === 'live' ? (
+                    <Badge label="En Vivo" variant="error" size="sm" />
+                  ) : (
+                    <Text className="text-sm font-bold text-primary-600">{match.home_score}-{match.away_score}</Text>
+                  )}
+                </View>
+              </Card>
+            ))
+          ) : (
+            <EmptyState icon="⚽" title="No hay partidos" description="Sincroniza desde SofaScore" />
+          )
+        )}
+
+        {/* TAB: Tournaments */}
+        {activeTab === 'tournaments' && (
+          tournaments.length > 0 ? (
+            tournaments.map((t) => (
+              <Card key={t.id} className="mb-2">
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1">
+                    <Text className="font-semibold text-gray-900">{t.name}</Text>
+                    <Text className="text-xs text-gray-500">{t.category_name} • Prioridad: {t.priority}</Text>
+                    {t.last_synced_at && (
+                      <Text className="text-xs text-gray-400">Último sync: {new Date(t.last_synced_at).toLocaleString('es-ES')}</Text>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleToggleTournament(t.id, t.is_active)}
+                    className={`px-3 py-1.5 rounded-full ${t.is_active ? 'bg-green-100' : 'bg-gray-100'}`}
+                  >
+                    <Text className={`text-xs font-medium ${t.is_active ? 'text-green-700' : 'text-gray-500'}`}>
+                      {t.is_active ? 'Activo' : 'Inactivo'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </Card>
+            ))
+          ) : (
+            <EmptyState icon="🏆" title="Sin torneos" description="No hay torneos configurados" />
+          )
+        )}
+
+        {/* TAB: Logs */}
+        {activeTab === 'logs' && (
+          syncLogs.length > 0 ? (
+            syncLogs.map((log) => (
+              <Card key={log.id} className="mb-2">
+                <View className="flex-row items-center justify-between mb-1">
+                  <Text className="font-medium text-gray-900 text-sm">{log.sync_type === 'matches' ? 'Partidos' : log.sync_type}</Text>
+                  <Badge
+                    label={log.status === 'success' ? 'Éxito' : log.status === 'error' ? 'Error' : 'Ejecutando'}
+                    variant={log.status === 'success' ? 'success' : log.status === 'error' ? 'error' : 'warning'}
                     size="sm"
                   />
-                )}
-              </View>
-            </Card>
-          ))
-        ) : (
-          <EmptyState
-            icon="⚽"
-            title="No hay partidos"
-            description="Crea el primer partido para empezar"
-          />
+                </View>
+                <Text className="text-xs text-gray-500">{new Date(log.started_at).toLocaleString('es-ES')}</Text>
+                <Text className="text-xs text-gray-400 mt-1">
+                  Procesados: {log.records_processed} | Creados: {log.records_created} | Actualizados: {log.records_updated}
+                </Text>
+                {log.error_message && <Text className="text-xs text-red-500 mt-1">{log.error_message}</Text>}
+              </Card>
+            ))
+          ) : (
+            <EmptyState icon="📋" title="Sin logs" description="Los logs de sincronización aparecerán aquí" />
+          )
         )}
       </View>
-
-      {/* Create/Edit Modal */}
-      <Modal
-        visible={showCreateModal}
-        onClose={() => {
-          setShowCreateModal(false);
-          resetForm();
-        }}
-        title={editingMatch ? "Editar Partido" : "Crear Partido"}
-      >
-        <View>
-          <Input
-            label="Equipo Local *"
-            placeholder="Ej: Real Madrid"
-            value={homeTeam}
-            onChangeText={setHomeTeam}
-          />
-          
-          <Input
-            label="Equipo Visitante *"
-            placeholder="Ej: FC Barcelona"
-            value={awayTeam}
-            onChangeText={setAwayTeam}
-          />
-          
-          <Input
-            label="Liga"
-            placeholder="Ej: La Liga"
-            value={league}
-            onChangeText={setLeague}
-          />
-          
-          <Input
-            label="Fecha del Partido *"
-            placeholder="YYYY-MM-DD HH:MM"
-            value={matchDate}
-            onChangeText={setMatchDate}
-          />
-
-          {editingMatch && (
-            <>
-              <Input
-                label="Goles Local"
-                placeholder="0"
-                value={homeScore}
-                onChangeText={setHomeScore}
-                type="number"
-              />
-              
-              <Input
-                label="Goles Visitante"
-                placeholder="0"
-                value={awayScore}
-                onChangeText={setAwayScore}
-                type="number"
-              />
-            </>
-          )}
-
-          <Button
-            title={editingMatch ? "Guardar Cambios" : "Crear Partido"}
-            onPress={editingMatch ? () => handleUpdateScore(editingMatch.id) : handleCreateMatch}
-            fullWidth
-          />
-        </View>
-      </Modal>
     </ScrollView>
   );
 }
