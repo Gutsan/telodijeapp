@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "telodije",
+    "name": "Telodije",
     "slug": "telodije",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,7 +12,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#22c55e",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -21,8 +21,31 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "output": "single",
+      "favicon": "./assets/images/favicon.png",
+      "pwa": {
+        "name": "Telodije - Quinielas de Fútbol",
+        "shortName": "Telodije",
+        "description": "Gamifica las quinielas de fútbol entre amigos",
+        "themeColor": "#22c55e",
+        "backgroundColor": "#ffffff",
+        "display": "standalone",
+        "orientation": "portrait",
+        "startUrl": "/",
+        "icons": [
+          {
+            "src": "./assets/images/icon.png",
+            "sizes": "192x192",
+            "type": "image/png"
+          },
+          {
+            "src": "./assets/images/icon.png",
+            "sizes": "512x512",
+            "type": "image/png"
+          }
+        ]
+      },
+      "manifest": "./public/manifest.json"
     },
     "plugins": [
       "expo-router",

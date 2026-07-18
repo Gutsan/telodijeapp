@@ -1,70 +1,85 @@
-import { SymbolView } from 'expo-symbols';
-import { Link, Tabs } from 'expo-router';
-import { Platform, Pressable } from 'react-native';
+import React from 'react';
+import { Tabs } from 'expo-router';
+import { Text } from 'react-native';
+import { useAuthStore } from '../../stores/authStore';
+import { ProtectedRoute } from '../../components/auth/ProtectedRoute';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+function HomeIcon({ color }: { color: string }) {
+  return <Text style={{ color, fontSize: 24 }}>🏠</Text>;
+}
+
+function QuinielasIcon({ color }: { color: string }) {
+  return <Text style={{ color, fontSize: 24 }}>⚽</Text>;
+}
+
+function RankingsIcon({ color }: { color: string }) {
+  return <Text style={{ color, fontSize: 24 }}>🏆</Text>;
+}
+
+function ProfileIcon({ color }: { color: string }) {
+  return <Text style={{ color, fontSize: 24 }}>👤</Text>;
+}
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable style={{ marginRight: 15 }}>
-                {({ pressed }) => (
-                  <SymbolView
-                    name={{ ios: 'info.circle', android: 'info', web: 'info' }}
-                    size={25}
-                    tintColor={Colors[colorScheme].text}
-                    style={{ opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
+    <ProtectedRoute>
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: '#22c55e',
+          tabBarInactiveTintColor: '#9ca3af',
+          tabBarStyle: {
+            backgroundColor: '#ffffff',
+            borderTopColor: '#e5e7eb',
+            height: 60,
+            paddingBottom: 8,
+            paddingTop: 8,
+          },
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: '600',
+          },
+          headerStyle: {
+            backgroundColor: '#ffffff',
+          },
+          headerTintColor: '#111827',
+          headerTitleStyle: {
+            fontWeight: '700',
+          },
         }}
-      />
-      <Tabs.Screen
-        name="two"
-        options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Inicio',
+            headerTitle: 'Telodije',
+            tabBarIcon: HomeIcon,
+          }}
+        />
+        <Tabs.Screen
+          name="quinielas"
+          options={{
+            title: 'Quinielas',
+            headerTitle: 'Mis Quinielas',
+            tabBarIcon: QuinielasIcon,
+          }}
+        />
+        <Tabs.Screen
+          name="rankings"
+          options={{
+            title: 'Rankings',
+            headerTitle: 'Clasificación',
+            tabBarIcon: RankingsIcon,
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: 'Perfil',
+            headerTitle: 'Mi Perfil',
+            tabBarIcon: ProfileIcon,
+          }}
+        />
+      </Tabs>
+    </ProtectedRoute>
   );
 }

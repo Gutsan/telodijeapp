@@ -1,0 +1,27 @@
+{
+  "name": "Telodije - Quinielas de Fútbol",
+  "short_name": "Telodije",
+  "description": "Gamifica las quinielas de fútbol entre amigos",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#22c55e",
+  "icons": [
+    {
+      "src": "/assets/images/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/images/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "entertainment", "social"],
+  "lang": "es",
+  "dir": "ltr"
+}
