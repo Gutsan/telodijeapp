@@ -1,4 +1,8 @@
 {
+  "buildCommand": "cd telodije && npm install && npm run build:web",
+  "outputDirectory": "telodije/dist",
+  "installCommand": "cd telodije && npm install",
+  "framework": null,
   "rewrites": [
     {
       "source": "/((?!assets/).*)",
