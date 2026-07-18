@@ -11,7 +11,7 @@ const GENERAL_QUINIELA_ID = '770e8400-e29b-41d4-a716-446655440001';
 
 export default function RankingsScreen() {
   const { user } = useAuthStore();
-  const { rankings, loading, fetchRankings } = useRankings(GENERAL_QUINIELA_ID);
+  const { rankings, loading, refreshRankings } = useRankings(GENERAL_QUINIELA_ID);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedQuiniela, setSelectedQuiniela] = useState(GENERAL_QUINIELA_ID);
 
@@ -20,7 +20,7 @@ export default function RankingsScreen() {
   }, [selectedQuiniela]);
 
   const loadRankings = async () => {
-    await fetchRankings();
+    await refreshRankings();
   };
 
   const onRefresh = async () => {
