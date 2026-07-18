@@ -7,13 +7,13 @@ interface AuthState {
   session: any | null;
   loading: boolean;
   initialized: boolean;
-  
+
   // Actions
   setUser: (user: User | null) => void;
   setSession: (session: any | null) => void;
   setLoading: (loading: boolean) => void;
   setInitialized: (initialized: boolean) => void;
-  
+
   // Auth actions
   initialize: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -21,6 +21,64 @@ interface AuthState {
   signInWithGoogle: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+}
+
+/**
+ * Try to fetch the user profile from DB.
+ * If it doesn't exist, create it.
+ * If DB fails entirely, return a virtual profile from session data.
+ */
+async function fetchOrCreateProfile(userId: string, userData?: any): Promise<User> {
+  // 1. Try to fetch existing profile
+  const { data: profile, error: fetchError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (!fetchError && profile) {
+    return profile;
+  }
+
+  console.log('Profile not found, creating...', fetchError?.message);
+
+  // 2. Try to create it
+  const { data: newProfile, error: createError } = await supabase
+    .from('users')
+    .insert({
+      id: userId,
+      email: userData?.email || '',
+      full_name: userData?.full_name ||
+                 userData?.name ||
+                 userData?.email?.split('@')[0] || 'Usuario',
+      avatar_url: userData?.avatar_url || userData?.picture || null,
+      provider: userData?.provider || 'email',
+      provider_id: userData?.provider_id || null,
+      plan_type: 'free',
+    })
+    .select()
+    .single();
+
+  if (!createError && newProfile) {
+    return newProfile;
+  }
+
+  // 3. DB failed — return virtual profile from session data
+  // This ensures the user can always log in
+  console.log('DB insert failed, using session data as profile:', createError?.message);
+  return {
+    id: userId,
+    email: userData?.email || '',
+    full_name: userData?.full_name ||
+               userData?.name ||
+               userData?.email?.split('@')[0] || 'Usuario',
+    avatar_url: userData?.avatar_url || userData?.picture || null,
+    provider: userData?.provider || 'email',
+    provider_id: userData?.provider_id || null,
+    plan_type: 'free',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  } as User;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -38,79 +96,59 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       set({ loading: true });
 
-      // Get initial session
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error('Error getting session:', error);
-        return;
-      }
+      // STEP 1: Try to get current session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      set({ session });
+      if (sessionError) {
+        console.error('Error getting session:', sessionError);
+      }
 
       if (session?.user) {
-        // Fetch user profile
-        const { data: profile, error: profileError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        if (profileError) {
-          console.error('Error fetching profile:', profileError);
-        } else {
-          set({ user: profile });
-        }
+        console.log('✅ Session found from getSession():', session.user.email);
+        const profile = await fetchOrCreateProfile(session.user.id, session.user.user_metadata);
+        set({ session, user: profile, loading: false, initialized: true });
+      } else {
+        console.log('⏳ No session from getSession(), waiting for auth events...');
       }
 
-      // Listen for auth changes
+      // STEP 2: Listen for ALL auth events
       supabase.auth.onAuthStateChange(async (event, newSession) => {
-        console.log('Auth event:', event);
-        
-        set({ session: newSession });
+        console.log('🔑 Auth event:', event, '| user:', newSession?.user?.email ?? 'null', '| hasSession:', !!newSession);
 
-        if (newSession?.user) {
-          // Fetch or create user profile
-          const { data: profile, error: profileError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', newSession.user.id)
-            .single();
+        const currentState = get();
 
-          if (profileError) {
-            // Profile doesn't exist, create it
-            const { data: newProfile, error: createError } = await supabase
-              .from('users')
-              .insert({
-                id: newSession.user.id,
-                email: newSession.user.email || '',
-                full_name: newSession.user.user_metadata?.full_name || 
-                           newSession.user.user_metadata?.name || 
-                           newSession.user.email?.split('@')[0] || 'Usuario',
-                avatar_url: newSession.user.user_metadata?.avatar_url || 
-                            newSession.user.user_metadata?.picture || null,
-                provider: newSession.user.user_metadata?.provider || 'email',
-                provider_id: newSession.user.user_metadata?.provider_id || null,
-                plan_type: 'free',
-              })
-              .select()
-              .single();
-
-            if (createError) {
-              console.error('Error creating profile:', createError);
-            } else {
-              set({ user: newProfile });
+        if (event === 'INITIAL_SESSION') {
+          if (newSession?.user) {
+            // INITIAL_SESSION with valid session — process it
+            console.log('✅ INITIAL_SESSION has user:', newSession.user.email);
+            if (!currentState.user) {
+              const profile = await fetchOrCreateProfile(newSession.user.id, newSession.user.user_metadata);
+              set({ session: newSession, user: profile, loading: false, initialized: true });
             }
           } else {
-            set({ user: profile });
+            // INITIAL_SESSION with NO user — stale/invalid session
+            console.log('❌ INITIAL_SESSION has no user — clearing stale session');
+            // If we already marked as initialized from getSession(), skip
+            if (!currentState.initialized) {
+              set({ loading: false, initialized: true });
+            }
           }
-        } else {
-          set({ user: null });
+          return;
+        }
+
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          if (newSession?.user) {
+            console.log('✅ SIGNED_IN/TOKEN_REFRESHED:', newSession.user.email);
+            const profile = await fetchOrCreateProfile(newSession.user.id, newSession.user.user_metadata);
+            set({ session: newSession, user: profile, loading: false, initialized: true });
+          }
+        } else if (event === 'SIGNED_OUT') {
+          console.log('👋 SIGNED_OUT');
+          set({ session: null, user: null, loading: false, initialized: true });
         }
       });
     } catch (error) {
       console.error('Error initializing auth:', error);
-    } finally {
       set({ loading: false, initialized: true });
     }
   },
@@ -159,7 +197,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: 'http://localhost:8081',
+          redirectTo: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081',
         },
       });
 
@@ -186,13 +224,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { session } = get();
     if (!session?.user) return;
 
-    const { data: profile, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', session.user.id)
-      .single();
-
-    if (!error && profile) {
+    const profile = await fetchOrCreateProfile(session.user.id, session.user.user_metadata);
+    if (profile) {
       set({ user: profile });
     }
   },

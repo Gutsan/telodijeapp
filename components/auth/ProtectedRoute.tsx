@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { router, useSegments } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
 
 interface ProtectedRouteProps {
@@ -10,7 +10,24 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, requiredRole = 'user' }: ProtectedRouteProps) {
   const { user, loading, initialized } = useAuthStore();
-  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    // Wait until auth is initialized and not loading
+    if (loading || !initialized) return;
+
+    // Not authenticated → redirect to login
+    if (!user) {
+      router.replace('/(auth)/login');
+      return;
+    }
+
+    // Authenticated but needs admin role
+    if (requiredRole === 'admin' && user.plan_type !== 'premium') {
+      router.replace('/(tabs)');
+      return;
+    }
+  }, [user, loading, initialized, requiredRole, router]);
 
   // Show loading while checking auth
   if (loading || !initialized) {
@@ -21,18 +38,22 @@ export function ProtectedRoute({ children, requiredRole = 'user' }: ProtectedRou
     );
   }
 
-  // Check if user is authenticated
+  // Not authenticated yet — wait for useEffect redirect
   if (!user) {
-    // Redirect to login
-    router.replace('/(auth)/login');
-    return null;
+    return (
+      <View className="flex-1 justify-center items-center bg-white">
+        <ActivityIndicator size="large" color="#22c55e" />
+      </View>
+    );
   }
 
-  // Check role if required
+  // Admin check — wait for useEffect redirect
   if (requiredRole === 'admin' && user.plan_type !== 'premium') {
-    // Redirect to home if not admin
-    router.replace('/(tabs)');
-    return null;
+    return (
+      <View className="flex-1 justify-center items-center bg-white">
+        <ActivityIndicator size="large" color="#22c55e" />
+      </View>
+    );
   }
 
   return <>{children}</>;

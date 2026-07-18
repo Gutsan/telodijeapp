@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Link, router } from 'expo-router';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { Link } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
 import { Button, Input, Card } from '../../components/ui';
 import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
@@ -11,40 +11,45 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const { signUpWithEmail } = useAuthStore();
 
   const handleRegister = async () => {
+    setErrorMessage('');
+    setSuccessMessage('');
+
     if (!fullName || !email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+      setErrorMessage('Por favor completa todos los campos');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
+      setErrorMessage('Las contraseñas no coinciden');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+      setErrorMessage('La contraseña debe tener al menos 6 caracteres');
       return;
     }
 
     setLoading(true);
     try {
       const { error } = await signUpWithEmail(email, password);
-      
+
       if (error) {
-        Alert.alert('Error', error);
+        setErrorMessage(error);
         return;
       }
 
-      Alert.alert(
-        'Éxito',
-        'Cuenta creada. Revisa tu email para confirmar tu cuenta.',
-        [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }]
-      );
+      setSuccessMessage('Cuenta creada correctamente. Redirigiendo al login...');
+      setTimeout(() => {
+        const { router } = require('expo-router');
+        router.replace('/(auth)/login');
+      }, 2000);
     } catch (error) {
-      Alert.alert('Error', 'Ocurrió un error al crear la cuenta');
+      setErrorMessage('Ocurrió un error al crear la cuenta');
     } finally {
       setLoading(false);
     }
@@ -63,6 +68,20 @@ export default function RegisterScreen() {
           </Text>
         </View>
 
+        {/* Error Message */}
+        {errorMessage ? (
+          <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+            <Text className="text-red-600 text-sm text-center">{errorMessage}</Text>
+          </View>
+        ) : null}
+
+        {/* Success Message */}
+        {successMessage ? (
+          <View className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+            <Text className="text-green-600 text-sm text-center">{successMessage}</Text>
+          </View>
+        ) : null}
+
         {/* Register Form */}
         <Card className="mb-6">
           <Text className="text-xl font-semibold text-gray-900 mb-6">
@@ -73,7 +92,7 @@ export default function RegisterScreen() {
             label="Nombre completo"
             placeholder="Juan Pérez"
             value={fullName}
-            onChangeText={setFullName}
+            onChangeText={(text) => { setFullName(text); setErrorMessage(''); }}
             leftIcon={<Text>👤</Text>}
           />
 
@@ -81,7 +100,7 @@ export default function RegisterScreen() {
             label="Email"
             placeholder="tu@email.com"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => { setEmail(text); setErrorMessage(''); }}
             type="email"
             leftIcon={<Text>📧</Text>}
           />
@@ -90,7 +109,7 @@ export default function RegisterScreen() {
             label="Contraseña"
             placeholder="••••••••"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => { setPassword(text); setErrorMessage(''); }}
             type="password"
             leftIcon={<Text>🔒</Text>}
           />
@@ -99,7 +118,7 @@ export default function RegisterScreen() {
             label="Confirmar contraseña"
             placeholder="••••••••"
             value={confirmPassword}
-            onChangeText={setConfirmPassword}
+            onChangeText={(text) => { setConfirmPassword(text); setErrorMessage(''); }}
             type="password"
             leftIcon={<Text>🔒</Text>}
           />

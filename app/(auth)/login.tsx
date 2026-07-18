@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Link, router } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
 import { Button, Input, Card } from '../../components/ui';
@@ -9,27 +9,30 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const { signInWithEmail } = useAuthStore();
 
   const handleLogin = async () => {
+    setErrorMessage('');
+
     if (!email || !password) {
-      Alert.alert('Error', 'Por favor ingresa email y contraseña');
+      setErrorMessage('Por favor ingresa email y contraseña');
       return;
     }
 
     setLoading(true);
     try {
       const { error } = await signInWithEmail(email, password);
-      
+
       if (error) {
-        Alert.alert('Error', error);
+        setErrorMessage('Credenciales incorrectas. Verifica tu email y contraseña.');
         return;
       }
 
       // Navigate to home
       router.replace('/(tabs)');
     } catch (error) {
-      Alert.alert('Error', 'Ocurrió un error al iniciar sesión');
+      setErrorMessage('Ocurrió un error al iniciar sesión');
     } finally {
       setLoading(false);
     }
@@ -48,6 +51,13 @@ export default function LoginScreen() {
           </Text>
         </View>
 
+        {/* Error Message */}
+        {errorMessage ? (
+          <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+            <Text className="text-red-600 text-sm text-center">{errorMessage}</Text>
+          </View>
+        ) : null}
+
         {/* Login Form */}
         <Card className="mb-6">
           <Text className="text-xl font-semibold text-gray-900 mb-6">
@@ -58,7 +68,7 @@ export default function LoginScreen() {
             label="Email"
             placeholder="tu@email.com"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => { setEmail(text); setErrorMessage(''); }}
             type="email"
             leftIcon={<Text>📧</Text>}
           />
@@ -67,7 +77,7 @@ export default function LoginScreen() {
             label="Contraseña"
             placeholder="••••••••"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => { setPassword(text); setErrorMessage(''); }}
             type="password"
             leftIcon={<Text>🔒</Text>}
           />

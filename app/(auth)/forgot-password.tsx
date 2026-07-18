@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Link, router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Button, Input, Card } from '../../components/ui';
@@ -8,10 +8,12 @@ export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleResetPassword = async () => {
+    setErrorMessage('');
     if (!email) {
-      Alert.alert('Error', 'Por favor ingresa tu email');
+      setErrorMessage('Por favor ingresa tu email');
       return;
     }
 
@@ -22,13 +24,13 @@ export default function ForgotPasswordScreen() {
       });
 
       if (error) {
-        Alert.alert('Error', error.message);
+        setErrorMessage(error.message);
         return;
       }
 
       setSent(true);
     } catch (error) {
-      Alert.alert('Error', 'Ocurrió un error al enviar el email');
+      setErrorMessage('Ocurrió un error al enviar el email');
     } finally {
       setLoading(false);
     }
@@ -46,6 +48,13 @@ export default function ForgotPasswordScreen() {
             Recupera tu contraseña
           </Text>
         </View>
+
+        {/* Error */}
+        {errorMessage ? (
+          <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+            <Text className="text-red-600 text-sm text-center">{errorMessage}</Text>
+          </View>
+        ) : null}
 
         {/* Form */}
         <Card className="mb-6">
