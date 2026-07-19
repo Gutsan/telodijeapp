@@ -3,6 +3,7 @@ import { View, Text, ScrollView, RefreshControl } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../../stores/authStore';
 import { Card, Button, Badge, Loading, EmptyState, Modal } from '../../../components/ui';
+import { JoinRequestsCard } from '../../../components/quiniela/JoinRequestsCard';
 import { supabase } from '../../../lib/supabase';
 import { copyToClipboard, generateShareLink } from '../../../utils/share';
 
@@ -37,11 +38,32 @@ export default function QuinielaDetailScreen() {
         user_id,
         role,
         joined_at,
-        user:users(full_name, avatar_url)
+        user:users(full_name, avatar_url, email)
       `)
       .eq('quiniela_id', id);
 
-    setPlayers(p || []);
+    // For players missing profiles, try to create from available data
+    const playersList = p || [];
+    const missingPlayers = playersList.filter((pl: any) => !pl.user);
+    
+    for (const player of missingPlayers) {
+      // Try to upsert a minimal profile using the user_id
+      // This will work once the INSERT RLS policy (003) is applied
+      const { error: upsertErr } = await supabase
+        .from('users')
+        .upsert({
+          id: player.user_id,
+          email: player.user_id + '@telodije.app',
+          full_name: 'Jugador',
+          plan_type: 'free',
+        }, { onConflict: 'id' });
+      
+      if (!upsertErr) {
+        player.user = { full_name: 'Jugador', avatar_url: null };
+      }
+    }
+
+    setPlayers(playersList);
     setLoading(false);
   };
 
@@ -72,18 +94,18 @@ export default function QuinielaDetailScreen() {
   };
 
   if (loading && !refreshing) {
-    return <Loading fullScreen text="Cargando quiniela..." />;
+    return <Loading fullScreen text="Cargando apuesta..." />;
   }
 
   if (!quiniela) {
     return (
       <EmptyState
         icon="🔍"
-        title="Quiniela no encontrada"
-        description="Esta quiniela no existe o fue eliminada"
+        title="Apuesta no encontrada"
+        description="Esta apuesta no existe o fue eliminada"
         action={
           <Button
-            title="Volver a quinielas"
+            title="Volver a apuestas"
             onPress={() => router.push('/(tabs)/quinielas')}
           />
         }
@@ -138,7 +160,7 @@ export default function QuinielaDetailScreen() {
                 title="Compartir"
                 onPress={async () => {
                   const link = generateShareLink(quiniela.invite_code);
-                  const msg = `¡Únete a mi quiniela "${quiniela.name}" en Telodije!\n\nCódigo: ${quiniela.invite_code}\nEnlace: ${link}`;
+                  const msg = `¡Únete a mi apuesta "${quiniela.name}" en Telodije!\n\nCódigo: ${quiniela.invite_code}\nEnlace: ${link}`;
                   if (typeof window !== 'undefined' && navigator.share) {
                     await navigator.share({ title: 'Telodije', text: msg });
                   } else {
@@ -185,9 +207,14 @@ export default function QuinielaDetailScreen() {
           )}
         </Card>
 
+        {/* Join Requests (owner only) */}
+        {isOwner && (
+          <JoinRequestsCard quinielaId={id!} onRequestHandled={loadQuiniela} />
+        )}
+
         {/* Action Buttons */}
         <Button
-          title="⚽ Jugar Quiniela"
+          title="⚽ Jugar Apuesta"
           onPress={() => router.push(`/quiniela/${id}/predict`)}
           fullWidth
         />

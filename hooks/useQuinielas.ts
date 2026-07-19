@@ -10,6 +10,7 @@ interface CreateQuinielaResult {
 
 interface JoinQuinielaResult {
   error: string | null;
+  quinielaName?: string;
 }
 
 export function useQuinielas() {
@@ -136,7 +137,7 @@ export function useQuinielas() {
 
       return { data, error: null };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error creating quiniela';
+      const message = err instanceof Error ? err.message : 'Error creating apuesta';
       setError(message);
       return { data: null, error: message };
     }
@@ -166,50 +167,43 @@ export function useQuinielas() {
         .single();
 
       if (existingPlayer) {
-        throw new Error('Ya eres miembro de esta quiniela');
+        throw new Error('Ya eres miembro de esta apuesta');
       }
 
-      // Check player limit
-      const { count } = await supabase
-        .from('quiniela_players')
-        .select('id', { count: 'exact', head: true })
-        .eq('quiniela_id', quiniela.id);
+      // Check if user already has a pending request
+      const { data: existingRequest } = await supabase
+        .from('join_requests')
+        .select('id, status')
+        .eq('quiniela_id', quiniela.id)
+        .eq('user_id', userId)
+        .single();
 
-      if (count && count >= quiniela.max_players) {
-        throw new Error('Esta quiniela está llena');
+      if (existingRequest) {
+        if (existingRequest.status === 'pending') {
+          throw new Error('Ya tienes una solicitud pendiente para esta apuesta');
+        }
+        if (existingRequest.status === 'approved') {
+          throw new Error('Tu solicitud ya fue aprobada');
+        }
+        if (existingRequest.status === 'rejected') {
+          throw new Error('Tu solicitud fue rechazada previamente');
+        }
       }
 
-      // Join quiniela
-      const { error: joinError } = await supabase
-        .from('quiniela_players')
+      // Create join request (pending approval)
+      const { error: requestError } = await supabase
+        .from('join_requests')
         .insert({
           quiniela_id: quiniela.id,
           user_id: userId,
-          role: 'player',
+          status: 'pending',
         });
 
-      if (joinError) throw joinError;
+      if (requestError) throw requestError;
 
-      // Update local state
-      setQuinielas(prev => [
-        ...prev,
-        {
-          ...quiniela,
-          quiniela_players: [{
-            id: '',
-            quiniela_id: quiniela.id,
-            user_id: userId,
-            role: 'player',
-            joined_at: new Date().toISOString(),
-          }],
-          player_count: (count || 0) + 1,
-          match_count: 0,
-        }
-      ]);
-
-      return { error: null };
+      return { error: null, quinielaName: quiniela.name };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error joining quiniela';
+      const message = err instanceof Error ? err.message : 'Error al enviar solicitud';
       setError(message);
       return { error: message };
     }
@@ -232,7 +226,7 @@ export function useQuinielas() {
 
       return { error: null };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error leaving quiniela';
+      const message = err instanceof Error ? err.message : 'Error leaving apuesta';
       setError(message);
       return { error: message };
     }
@@ -254,7 +248,7 @@ export function useQuinielas() {
 
       return { error: null };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error deleting quiniela';
+      const message = err instanceof Error ? err.message : 'Error deleting apuesta';
       setError(message);
       return { error: message };
     }
@@ -275,6 +269,48 @@ export function useQuinielas() {
     return !!data;
   }, []);
 
+  async function getJoinRequests(quinielaId: string) {
+    const { data } = await supabase
+      .from('join_requests')
+      .select('*, user:users(full_name, avatar_url, email)')
+      .eq('quiniela_id', quinielaId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true });
+    return data || [];
+  }
+
+  async function approveJoinRequest(requestId: string, quinielaId: string, userId: string): Promise<{ error: string | null }> {
+    try {
+      const { error: updateError } = await supabase
+        .from('join_requests')
+        .update({ status: 'approved', reviewed_at: new Date().toISOString() })
+        .eq('id', requestId);
+      if (updateError) throw updateError;
+
+      const { error: joinError } = await supabase
+        .from('quiniela_players')
+        .insert({ quiniela_id: quinielaId, user_id: userId, role: 'player' });
+      if (joinError) throw joinError;
+
+      return { error: null };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Error al aprobar' };
+    }
+  }
+
+  async function rejectJoinRequest(requestId: string): Promise<{ error: string | null }> {
+    try {
+      const { error } = await supabase
+        .from('join_requests')
+        .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
+        .eq('id', requestId);
+      if (error) throw error;
+      return { error: null };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Error al rechazar' };
+    }
+  }
+
   return {
     quinielas,
     loading,
@@ -286,5 +322,8 @@ export function useQuinielas() {
     deleteQuiniela,
     getQuinielaById,
     isPlayer,
+    getJoinRequests,
+    approveJoinRequest,
+    rejectJoinRequest,
   };
 }
