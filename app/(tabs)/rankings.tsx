@@ -56,7 +56,7 @@ export default function RankingsScreen() {
                 Clasificación
               </Text>
               <Text className="text-gray-500">
-                Quiniela General - Semana actual
+                Apuesta General - Semana actual
               </Text>
             </View>
             <Badge label={`${rankings.length} jugadores`} variant="primary" />

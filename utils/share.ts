@@ -7,7 +7,7 @@ export function getShareMessage(
   quinielaName: string,
   inviteCode: string
 ): string {
-  return `¡Únete a mi quiniela "${quinielaName}" en Telodije! 🏆\n\nUsa el código: ${inviteCode}\nO haz clic en el enlace:`;
+  return `¡Únete a mi apuesta "${quinielaName}" en Telodije! 🏆\n\nUsa el código: ${inviteCode}\nO haz clic en el enlace:`;
 }
 
 export function copyToClipboard(text: string): Promise<void> {

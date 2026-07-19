@@ -76,7 +76,7 @@ export default function CreateQuinielaScreen() {
   const handleNextStep = () => {
     setErrorMessage('');
     if (!name.trim()) {
-      setErrorMessage('Por favor ingresa un nombre para la quiniela');
+      setErrorMessage('Por favor ingresa un nombre para la apuesta');
       return;
     }
     setStep(2);
@@ -110,12 +110,12 @@ export default function CreateQuinielaScreen() {
       if (newQuiniela) {
         setCreatedId(newQuiniela.id);
         setCreatedCode(inviteCode);
-        setSuccessMessage(`Quiniela "${name}" creada con ${selectedMatchIds.size} partidos`);
+        setSuccessMessage(`Apuesta "${name}" creada con ${selectedMatchIds.size} partidos`);
       } else {
-        setErrorMessage(createError || 'No se pudo crear la quiniela');
+        setErrorMessage(createError || 'No se pudo crear la apuesta');
       }
     } catch (error) {
-      setErrorMessage('Ocurrió un error al crear la quiniela');
+      setErrorMessage('Ocurrió un error al crear la apuesta');
     } finally {
       setLoading(false);
     }
@@ -129,13 +129,13 @@ export default function CreateQuinielaScreen() {
           <Card className="mb-4">
             <View className="items-center py-6">
               <Text className="text-5xl mb-4">🎉</Text>
-              <Text className="text-xl font-bold text-gray-900 mb-2">¡Quiniela Creada!</Text>
+              <Text className="text-xl font-bold text-gray-900 mb-2">¡Apuesta Creada!</Text>
               <Text className="text-gray-500 text-center mb-4">{successMessage}</Text>
               <View className="bg-gray-50 p-4 rounded-lg w-full mb-6">
                 <Text className="text-sm text-gray-600 mb-2 text-center">Código de invitación:</Text>
                 <Text className="text-3xl font-bold text-primary-600 text-center font-mono">{createdCode}</Text>
               </View>
-              <Button title="Ver Quiniela" onPress={() => router.push(`/quiniela/${createdId}`)} fullWidth />
+              <Button title="Ver Apuesta" onPress={() => router.push(`/quiniela/${createdId}`)} fullWidth />
               <View className="mt-3 w-full">
                 <Button title="Volver al Inicio" onPress={() => router.replace('/(tabs)')} variant="outline" fullWidth />
               </View>
@@ -169,7 +169,7 @@ export default function CreateQuinielaScreen() {
               <View className="flex-row items-center mb-4">
                 <Text className="text-3xl mr-3">➕</Text>
                 <View>
-                  <Text className="text-xl font-bold text-gray-900">Crear Quiniela</Text>
+                  <Text className="text-xl font-bold text-gray-900">Crear Apuesta</Text>
                   <Text className="text-gray-500">Paso 1 de 2: Información</Text>
                 </View>
               </View>
@@ -318,7 +318,7 @@ export default function CreateQuinielaScreen() {
               </View>
               <View className="flex-2">
                 <Button
-                  title={`Crear Quiniela${selectedMatchIds.size > 0 ? ` (${selectedMatchIds.size} partidos)` : ''}`}
+                  title={`Crear Apuesta${selectedMatchIds.size > 0 ? ` (${selectedMatchIds.size} partidos)` : ''}`}
                   onPress={handleCreate}
                   loading={loading}
                   fullWidth

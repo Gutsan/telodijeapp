@@ -58,8 +58,8 @@ export default function TabLayout() {
         <Tabs.Screen
           name="quinielas"
           options={{
-            title: 'Quinielas',
-            headerTitle: 'Mis Quinielas',
+            title: 'Apuestas',
+            headerTitle: 'Mis Apuestas',
             tabBarIcon: QuinielasIcon,
           }}
         />

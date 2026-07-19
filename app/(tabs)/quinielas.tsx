@@ -34,7 +34,7 @@ export default function QuinielasScreen() {
   });
 
   if (loading && !refreshing) {
-    return <Loading fullScreen text="Cargando quinielas..." />;
+    return <Loading fullScreen text="Cargando apuestas..." />;
   }
 
   return (
@@ -90,7 +90,7 @@ export default function QuinielasScreen() {
         {/* Action Buttons */}
         <View className="flex-row justify-between mb-4">
           <Button
-            title="Crear Quiniela"
+                title="Crear Apuesta"
             onPress={() => router.push('/quiniela/create')}
             variant="primary"
             icon={<Text>➕</Text>}
@@ -156,17 +156,17 @@ export default function QuinielasScreen() {
         ) : (
           <EmptyState
             icon="📭"
-            title="No hay quinielas"
+            title="No hay apuestas"
             description={
               filter === 'all'
-                ? 'Crea una quiniela o únete con un código para empezar'
+                ? 'Crea una apuesta o únete con un código para empezar'
                 : filter === 'public'
-                ? 'No hay quinielas públicas disponibles'
-                : 'No tienes quinielas privadas aún'
+                ? 'No hay apuestas públicas disponibles'
+                : 'No tienes apuestas privadas aún'
             }
             action={
               <Button
-                title="Crear Quiniela"
+            title="Crear Apuesta"
                 onPress={() => router.push('/quiniela/create')}
               />
             }

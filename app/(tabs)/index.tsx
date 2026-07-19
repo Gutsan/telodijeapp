@@ -79,7 +79,7 @@ export default function HomeScreen() {
             <Card>
               <View className="items-center py-3">
                 <Text className="text-3xl mb-2">⚽</Text>
-                <Text className="text-sm font-medium text-gray-700">Quiniela General</Text>
+                <Text className="text-sm font-medium text-gray-700">Apuesta General</Text>
               </View>
             </Card>
           </TouchableOpacity>
@@ -164,7 +164,7 @@ export default function HomeScreen() {
         {/* Active Quinielas */}
         <View className="flex-row justify-between items-center mb-3">
           <Text className="text-lg font-semibold text-gray-900">
-            Mis Quinielas
+            Mis Apuestas
           </Text>
           <TouchableOpacity onPress={() => router.push('/(tabs)/quinielas')}>
             <Text className="text-primary-500 font-medium">Ver todas</Text>
@@ -203,8 +203,8 @@ export default function HomeScreen() {
         ) : (
           <EmptyState
             icon="📭"
-            title="Sin quinielas"
-            description="Únete a una quiniela o crea una nueva para empezar a competir"
+            title="Sin apuestas"
+            description="Únete a una apuesta o crea una nueva para empezar a competir"
           />
         )}
 

@@ -152,7 +152,7 @@ export default function QuinielaGeneralScreen() {
           <View className="flex-row items-center justify-between">
             <View>
               <Text className="text-xl font-bold text-gray-900">
-                Quiniela General
+                Apuesta General
               </Text>
               <Text className="text-gray-500">
                 Semana del {new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}

@@ -174,7 +174,7 @@ export default function PredictionsScreen() {
         {/* Divider */}
         <View className="flex-row items-center my-4">
           <View className="flex-1 h-px bg-gray-200" />
-          <Text className="px-3 text-sm text-gray-500">Tu Quiniela</Text>
+          <Text className="px-3 text-sm text-gray-500">Tu Apuesta</Text>
           <View className="flex-1 h-px bg-gray-200" />
         </View>
 
@@ -209,7 +209,7 @@ export default function PredictionsScreen() {
         )}
 
         {matches.length === 0 && (
-          <EmptyState icon="⚽" title="No hay partidos" description="No se han programado partidos para esta quiniela aún" />
+          <EmptyState icon="⚽" title="No hay partidos" description="No se han programado partidos para esta apuesta aún" />
         )}
 
         {canSave && (

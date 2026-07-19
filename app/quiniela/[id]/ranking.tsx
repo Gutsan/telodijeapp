@@ -68,7 +68,7 @@ export default function QuinielaRankingScreen() {
           <View className="flex-row items-center justify-between">
             <View>
               <Text className="text-xl font-bold text-gray-900">🏆 Ranking</Text>
-              <Text className="text-gray-500">{quiniela?.name || 'Quiniela'}</Text>
+              <Text className="text-gray-500">{quiniela?.name || 'Apuesta'}</Text>
             </View>
             <Badge label={`${rankings.length} jugadores`} variant="primary" />
           </View>
