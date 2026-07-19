@@ -1,18 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
 import { useQuinielas } from '../../hooks/useQuinielas';
 import { Card, Button, Input } from '../../components/ui';
 import { validateInviteCode } from '../../utils/quiniela';
 
 export default function JoinQuinielaScreen() {
+  const { code } = useLocalSearchParams<{ code: string }>();
   const { user } = useAuthStore();
   const { joinQuiniela } = useQuinielas();
-  const [inviteCode, setInviteCode] = useState('');
+  const [inviteCode, setInviteCode] = useState(code || '');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Auto-join if code was provided via URL
+  const didAutoJoin = React.useRef(false);
+  useEffect(() => {
+    if (code && user && !didAutoJoin.current) {
+      didAutoJoin.current = true;
+      setInviteCode(code);
+      // Auto-submit
+      (async () => {
+        setLoading(true);
+        try {
+          const { error, quinielaName } = await joinQuiniela(code.toUpperCase(), user.id);
+          if (error) {
+            setErrorMessage(error);
+          } else {
+            setSuccessMessage(`Solicitud enviada a "${quinielaName || 'apuesta'}". Espera que el creador la acepte.`);
+            setTimeout(() => router.push('/(tabs)/quinielas'), 2500);
+          }
+        } catch (err) {
+          setErrorMessage('Ocurrió un error al unirse a la apuesta');
+        } finally {
+          setLoading(false);
+        }
+      })();
+    }
+  }, [code, user]);
 
   const handleJoin = async () => {
     setErrorMessage('');
@@ -29,21 +56,20 @@ export default function JoinQuinielaScreen() {
     }
 
     if (!user) {
-      setErrorMessage('Debes estar autenticado para unirte a una quiniela');
+      setErrorMessage('Debes estar autenticado para unirte a una apuesta');
       return;
     }
 
     setLoading(true);
     try {
-      const { error } = await joinQuiniela(inviteCode.trim().toUpperCase(), user.id);
+      const { error, quinielaName } = await joinQuiniela(inviteCode.trim().toUpperCase(), user.id);
       if (error) {
         setErrorMessage(error);
         return;
       }
-      setSuccessMessage('Te has unido a la quiniela correctamente');
-      setTimeout(() => router.push('/(tabs)/quinielas'), 1500);
+      setSuccessMessage(`Solicitud enviada a "${quinielaName || 'apuesta'}". Espera que el creador la acepte.`);
     } catch (error) {
-      setErrorMessage('Ocurrió un error al unirse a la quiniela');
+      setErrorMessage('Ocurrió un error al unirse a la apuesta');
     } finally {
       setLoading(false);
     }
@@ -86,7 +112,7 @@ export default function JoinQuinielaScreen() {
           <Text className="text-sm text-gray-500 mt-2">El código tiene 6 caracteres (letras y números)</Text>
         </Card>
 
-        <Button title="Unirse a la Quiniela" onPress={handleJoin} loading={loading} fullWidth />
+        <Button title="Unirse a la Apuesta" onPress={handleJoin} loading={loading} fullWidth />
         <View className="mt-3">
           <Button title="Cancelar" onPress={() => router.back()} variant="ghost" fullWidth />
         </View>
